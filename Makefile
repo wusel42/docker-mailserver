@@ -1,4 +1,4 @@
-NAME = tvial/docker-mailserver
+NAME = wusel42/docker-mailserver
 
 all: build run fixtures tests clean
 all-no-build: run fixtures tests clean

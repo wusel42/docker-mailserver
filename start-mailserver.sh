@@ -32,11 +32,35 @@ if [ -f /tmp/postfix/accounts.cf ]; then
       maildirmake "/var/mail/${domain}/${user}/.Drafts"
       echo -e "INBOX\nINBOX.Sent\nINBOX.Trash\nInbox.Drafts" >> "/var/mail/${domain}/${user}/courierimapsubscribed"
       touch "/var/mail/${domain}/${user}/.Sent/maildirfolder"
-
     fi
     echo ${domain} >> /tmp/vhost.tmp
   done < /tmp/postfix/accounts.cf
   makeuserdb
+elif [ -f /tmp/postfix/relay_accounts.cf -a -f /tmp/postfix/relay_domains -a -f /tmp/postfix/transport_maps ]; then
+  echo "Creating relay setup for given users"
+  echo "# WARNING: this file is auto-generated. Modify accounts.cf in postfix directory on host" > /etc/postfix/relay_recipient_maps
+
+  # Checking that /tmp/postfix/accounts.cf ends with a newline
+  sed -i -e '$a\' /tmp/postfix/relay_accounts.cf
+
+  # Creating users
+  while IFS=$'|' read login
+  do
+    # Setting variables for better readability
+    user=$(echo ${login} | cut -d @ -f1)
+    domain=$(echo ${login} | cut -d @ -f2)
+    # Let's go!
+    echo "user '${user}' for domain '${domain}'"
+    echo "${login} x" >> /etc/postfix/relay_recipient_maps
+  done < /tmp/postfix/relay_accounts.cf
+  echo >>/etc/postfix/main.cf "parent_domain_matches_subdomains = debug_peer_list smtpd_access_maps"
+  echo >>/etc/postfix/main.cf "relay_recipient_maps = cdb:/etc/postfix/relay_recipient_maps"
+  echo >>/etc/postfix/main.cf "transport_maps = cdb:/etc/postfix/transport_maps"
+  echo >>/etc/postfix/main.cf "relay_domains = `cat /tmp/postfix/relay_domains`"
+  cp  /tmp/postfix/transport_maps /etc/postfix/transport_maps
+  postmap -c /etc/postfix cdb:/etc/postfix/relay_recipient_maps
+  postmap -c /etc/postfix cdb:/etc/postfix/transport_maps
+  sed -i -e 's/^virtual_.*$//g' /etc/postfix/main.cf
 else
   echo "==> Warning: '/tmp/postfix/accounts.cf' is not provided. No mail account created."
 fi

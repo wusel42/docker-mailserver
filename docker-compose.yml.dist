@@ -1,5 +1,5 @@
 mail:
-  image: tvial/docker-mailserver
+  image: wusel42/docker-mailserver
   hostname: mail
   domainname: domain.com
   cap_add:
